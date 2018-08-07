@@ -1,0 +1,6 @@
+[SOURCE]=00000000,MPS.asm
+[ARCH]=00000000,MPS.arh
+[ROMSIZE]=4
+[FREQ]=1000000
+[FREEPINLEVEL]=1
+[WND.asm]=(78,78,1352,628)C:\Users\lee_l\Desktop\mpsina\mpsina\assembler\MPS.asm

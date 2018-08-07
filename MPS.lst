@@ -1,0 +1,986 @@
+Microsoft (R) Macro Assembler Version 6.14.8444		    08/07/18 22:59:02
+MPS.asm							     Page 1 - 1
+
+
+				.386
+				;??????? ????? ??? ? ??????
+ = 1000				RomSize    EQU   4096
+ = 0000				ACPPort1=00h
+ = 0005				ACPPort4=05h
+ = 0001				ACPPort2=01h
+ = 0006				ACPPort5=06h
+ = 0002				ACPPort3=02h
+ = 0007				ACPPort6=07h
+ = 0007				ACPStart=07h
+ = 0003				RdyPort=03h
+ = 0004				KeyPort=04h
+ = 0000				OutPort=00h
+ = 0001				OutPort1=01h
+ = 0002				OutPort2=02h
+ = 0003				SvPort1=03h
+ = 0004				SvPort2=04h
+ = 0005				SvPort3=05h
+ = 0006				SvPort4=06h
+
+ = 0032				Nmax=50
+ 0000				Data       SEGMENT use16 AT 0 
+				;????? ??????????? ???????? ??????????
+ 0000 00			KeyImage	db ?
+ 0001 00			SetTemp 	db ?
+ 0002 00			setTempKey1 	db ?
+ 0003 00			setTempKey2 	db ?
+ 0004 00			setTempKey3 	db ?
+ 0005 00			KeyImageOld     db ?
+ 0006 00			SelectZ 	db ?
+ 0007 00			Uvelich		db ?
+ 0008 00			Umensh		db ?
+ 0009 00			RedactZ1          db ?
+ 000A 00			RedactZ2          db ?
+ 000B 00			RedactZ3          db ?
+ 000C 00			fredz1          db ?
+ 000D 00			fredz2        db ?
+ 000E 00			fredz3         db ?
+ 000F 00			bc              db ?
+ 0010 00			setind          db ?
+ 0011 00			temp            db ?
+ 0012  0003 [			BCDTemper dw 3 dup (?)
+        0000
+       ]
+ 0018 00			ControlPortImage db ?
+ 0019  0009 [			DispForm db 9 dup (?)
+        00
+       ]
+ 0022  0003 [			InTemper dw 3 dup (?)
+        0000
+       ]
+ 0028 00			Zone db ?
+ 0029  0009 [			DispTemper db 9 dup(?)
+        00
+       ]
+ 0032  0009 [			ArrModeTemper db 9 dup (?)
+        00
+       ]
+ 003B 00			coolMove1 db ?
+ 003C 00			coolMove2 db ?
+ 003D 00			coolMove3 db ?
+ 003E 00000000			Time1 dd ?
+ 0042 00			EndTimeFlag1 db ?
+ 0043 00000000			Time2 dd ?
+ 0047 00			EndTimeFlag2 db ?
+ 0048 00000000			Time3 dd ?
+ 004C 00			EndTimeFlag3 db ?
+ 004D				Data       ENDS
+ 0000				Stk        SEGMENT use16 AT 600h
+ 0000  001E [			           dw    30 dup (?)
+        0000
+       ]
+ 003C				StkTop     Label Word
+ 003C				Stk        ENDS
+
+ 0000				Code       SEGMENT use16
+				;????? ??????????? ???????? ????????
+				           ASSUME cs:Code,ds:Data,es:Data
+ 0000 3F 0C 76 5E 4D 5B		ConvTabl db 3Fh, 0Ch, 76h, 5Eh, 4Dh, 05Bh, 7Bh, 0EH, 7Fh, 5Fh
+       7B 0E 7F 5F
+ 000A				KeyInput proc
+ 000A  E4 04					in al,KeyPort
+ 000C  24 0F					and al,0fh
+ 000E  E8 0004					call VibrDelete
+ 0011  A2 0000 R				mov KeyImage,al
+ 0014  C3					ret
+ 0015				KeyInput endp
+
+ 0015				VibrDelete proc
+ 0015  8A E0			VD1: 	     mov ah,al
+ 0017  B7 00				     mov bh,0
+ 0019  E4 04			VD2:	     in al,KeyPort
+ 001B  38 C4				     cmp ah,al
+ 001D  75 F6			             jne VD1 
+ 001F  FE C7				     inc bh
+ 0021  80 FF 32				     cmp bh,NMax
+ 0024  75 F3					jne VD2
+ 0026  C3					ret
+ 0027				VibrDelete endp
+
+ 0027				CommForm proc
+ 0027  C6 06 0001 R 00				mov SetTemp,0
+ 002C  C6 06 0006 R 00				mov SelectZ,0
+ 0031  C6 06 0007 R 00				mov Uvelich,0
+ 0036  C6 06 0008 R 00				mov Umensh,0
+ 003B  C6 06 0009 R 00		                mov RedactZ1,0
+ 0040  C6 06 000A R 00		                mov RedactZ2,0
+ 0045  C6 06 000B R 00		                mov RedactZ3,0
+				                
+ 004A  80 3E 0000 R FF		                cmp KeyImage,0FFh
+ 004F  75 05			                jnz BN0 
+ 0051  C6 06 0005 R 00		                mov KeyImageOld,0
+				                
+				                
+ 0056  F6 06 0000 R 01		BN0:		test KeyImage,1h ;≥ö≥-≥-≥ø≥≥≥- ≥£TÅTÇ≥-≥-≥-≥-≥≥≥ø TÇ≥≥≥-≥ø≥≥TÄ≥-TÇTÉTÄTã ≥-≥≥TÇ≥ø≥-≥-≥-
+ 005B  75 4B					jnz BN1
+ 005D  A0 0000 R		                mov al,KeyImage
+ 0060  8A 1E 0000 R		                mov bl,KeyImage
+ 0064  32 06 0005 R		                xor al,KeyImageOld
+ 0068  22 C3			                and al,bl
+ 006A  88 1E 0005 R		                mov KeyImageOld,bl
+ 006E  74 38			                jz BN1
+				                
+				                
+				                
+ 0070  C6 06 0001 R FF				mov SetTemp, 0FFh
+				                
+
+ 0075  80 3E 000F R 01		                cmp bc,1h
+ 007A  75 0A			                jnz BT3
+ 007C  C6 06 003B R 02		                mov coolMove1,2h
+ 0081  C6 06 0002 R FF		                mov setTempKey1, 0FFh
+				        
+ 0086  80 3E 000F R 02		BT3:            cmp bc,2h
+ 008B  75 0A			                jnz BT4
+ 008D  C6 06 003C R 02		                mov coolMove2,2h
+ 0092  C6 06 0003 R FF		                mov setTempKey2, 0FFh
+				     
+ 0097  80 3E 000F R 04		BT4:            cmp bc,4h
+ 009C  75 0A			                jnz BN1     
+ 009E  C6 06 003D R 02		                mov coolMove3, 2h
+ 00A3  C6 06 0004 R FF		                mov setTempKey3, 0FFh
+
+ 00A8  F6 06 0000 R 02		BN1:	        test KeyImage,2h ;¢Î§•´•≠®• ‰‡Æ≠‚†
+ 00AD  75 3B					jnz BN2
+ 00AF  A0 0000 R		                mov al,KeyImage
+ 00B2  8A 1E 0000 R		                mov bl,KeyImage
+ 00B6  32 06 0005 R		                xor al,KeyImageOld
+ 00BA  22 C3			                and al,bl
+ 00BC  88 1E 0005 R		                mov KeyImageOld,bl
+ 00C0  74 28			                jz BN2
+ 00C2  C6 06 0006 R FF				mov SelectZ,0FFh
+ 00C7  A0 0028 R				mov al,byte ptr[Zone]
+ 00CA  04 03					add al, 3h
+ 00CC  8A E0			                mov ah,al
+ 00CE  A0 000F R		                mov al,bc
+ 00D1  E6 06			                out SvPort4,al
+ 00D3  D0 26 000F R		                shl bc,1h
+ 00D7  8A C4			                mov al,ah
+ 00D9  A2 0028 R				mov byte ptr[Zone],al
+ 00DC  3C 09					cmp al,09h
+ 00DE  75 0A					jne BN2
+ 00E0  C6 06 000F R 01		                 mov bc,1h
+ 00E5  C6 06 0028 R 00				mov byte ptr[Zone],0
+
+
+
+
+ 00EA  80 3E 0000 R EF		BN2:	        cmp KeyImage,0efh  
+ 00EF  75 55			                 jnz BN5
+ 00F1  A0 0000 R		                   mov al,KeyImage
+ 00F4  8A 1E 0000 R		                mov bl,KeyImage
+ 00F8  32 06 0005 R		                xor al,KeyImageOld
+ 00FC  22 C3			                and al,bl
+ 00FE  88 1E 0005 R		                mov KeyImageOld,bl
+ 0102  74 42			                jz BN5
+ 0104  80 3E 000F R 01		                 cmp bc,1h
+ 0109  75 0F			                 jnz BN3
+ 010B  C6 06 0009 R FF		                 mov RedactZ1,0FFh
+ 0110  C6 06 000C R FF		                 mov fredz1,0FFh
+ 0115  C6 06 0002 R 00		                 mov setTempKey1, 0h
+				        
+ 011A  80 3E 000F R 02		BN3:             cmp bc,2h
+ 011F  75 0F			                 jnz BN4
+ 0121  C6 06 000A R FF		                 mov RedactZ2,0FFh 
+ 0126  C6 06 000D R FF		                 mov fredz2,0FFh
+ 012B  C6 06 0003 R 00		                 mov setTempKey2, 0h
+				     
+ 0130  80 3E 000F R 04		BN4:             cmp bc,4h
+ 0135  75 0F			                 jnz BN5    
+ 0137  C6 06 000B R FF		                 mov RedactZ3,0FFh
+ 013C  C6 06 000E R FF		                 mov fredz3,0FFh
+ 0141  C6 06 0004 R 00		                 mov setTempKey3, 0h         
+ 0146  A0 000F R		BN5:              mov al,bc
+ 0149  E6 06			                 out SvPort4,al
+				                 
+				                 
+ 014B  80 3E 000C R FF		BN6:	        cmp fredz1,0ffh
+ 0150  74 10			                jz ZR1
+ 0152  80 3E 000D R FF		                cmp fredz2,0ffh
+ 0157  74 09			                jz ZR1
+ 0159  80 3E 000E R FF		                cmp fredz3,0ffh
+ 015E  74 02			                jz ZR1
+ 0160  EB 3E			                jmp exit
+				                
+ 0162  F6 06 0000 R 04		ZR1:            test KeyImage,4h 
+ 0167  75 18					jnz BN7
+ 0169  A0 0000 R		                mov al,KeyImage
+ 016C  8A 1E 0000 R		                mov bl,KeyImage
+ 0170  32 06 0005 R		                xor al,KeyImageOld
+ 0174  22 C3			                and al,bl
+ 0176  88 1E 0005 R		                mov KeyImageOld,bl
+ 017A  74 24			                jz exit
+ 017C  C6 06 0007 R FF				mov Uvelich,0FFh
+ 0181  F6 06 0000 R 08		BN7:	        test KeyImage,8h
+ 0186  75 18					jnz exit
+ 0188  A0 0000 R		                mov al,KeyImage
+ 018B  8A 1E 0000 R		                mov bl,KeyImage
+ 018F  32 06 0005 R		                xor al,KeyImageOld
+ 0193  22 C3			                and al,bl
+ 0195  88 1E 0005 R		                mov KeyImageOld,bl
+ 0199  74 05			                jz exit
+ 019B  C6 06 0008 R FF				mov Umensh,0FFh                 
+ 01A0  C3			exit:           ret	
+ 01A1				CommForm endp
+
+ 01A1				ACPInput	proc
+ 01A1  B0 00			                mov al,0
+ 01A3  E6 07					out ACPStart,al
+ 01A5  B0 01					mov al,1h 
+ 01A7  E6 07					out ACPStart,al
+ 01A9  E4 03			WaitRdy1:       in al,RdyPort
+ 01AB  A8 01					test al,1
+ 01AD  74 FA					je WaitRdy1
+ 01AF  E4 05					in al,ACPPort4
+ 01B1  8A E0			                mov ah,al
+ 01B3  E4 00			                in al,ACPPort1
+ 01B5  BA 0000			                mov dx,0
+ 01B8  BE 0080			                mov si,128
+ 01BB  F7 F6			                div si        
+ 01BD  A3 0022 R				mov InTemper,ax	
+
+ 01C0  B0 00			                mov al,0
+ 01C2  E6 07					out ACPStart,al
+ 01C4  B0 02					mov al,2h 
+ 01C6  E6 07					out ACPStart,al
+ 01C8  E4 03			WaitRdy2:       in al,RdyPort
+ 01CA  A8 02					test al,2
+ 01CC  74 FA					je WaitRdy2
+ 01CE  E4 06					in al,ACPPort5
+ 01D0  8A E0			                mov ah,al
+ 01D2  E4 01			                in al,ACPPort2
+ 01D4  BA 0000			                mov dx,0
+ 01D7  BE 0080			                mov si,128
+ 01DA  F7 F6			                div si        
+ 01DC  A3 0024 R				mov InTemper+2,ax	
+
+ 01DF  B0 00			                mov al,0
+ 01E1  E6 07					out ACPStart,al
+ 01E3  B0 04					mov al,4h 
+ 01E5  E6 07					out ACPStart,al
+ 01E7  E4 03			WaitRdy3:       in al,RdyPort
+ 01E9  A8 04					test al,4
+ 01EB  74 FA					je WaitRdy3
+ 01ED  E4 07					in al,ACPPort6
+ 01EF  8A E0			                mov ah,al
+ 01F1  E4 02			                in al,ACPPort3
+ 01F3  BA 0000			                mov dx,0
+ 01F6  BE 0080			                mov si,128
+ 01F9  F7 F6			                div si        
+ 01FB  A3 0026 R				mov InTemper+4,ax	
+ 01FE  C3					ret
+ 01FF				ACPInput endp
+
+ 01FF				BCDCodeConv proc
+ 01FF  33 C9			                xor cx,cx
+ 0201  BA 0000					mov dx,0
+ 0204  8B 0C					mov cx,[si]
+ 0206  81 E1 03FF				and cx,3FFh
+ 020A  E3 11			BCD2:	        jcxz BCD1
+ 020C  8A C2					mov al,dl
+ 020E  04 01					add al,1
+ 0210  27					daa
+ 0211  8A D0					mov dl,al
+ 0213  8A C6					mov al,dh
+ 0215  14 00					adc al,0
+ 0217  27					daa
+ 0218  8A F0					mov dh,al
+ 021A  49					dec cx
+ 021B  EB ED					jmp BCD2
+ 021D  89 15			BCD1:	        mov [di],dx
+ 021F  C3					ret
+ 0220				BCDCodeConv endp	
+
+ 0220				DispFor proc
+ 0220  8D 1E 0029 R		           lea bx,DispTemper
+ 0224  B9 0003			           mov cx,3
+ 0227  A1 0012 R		           mov ax,BCDTemper
+ 022A  8B F8			           mov di,ax
+ 022C  8B D0			DF1:       mov dx,ax
+ 022E  24 0F			           and al,0Fh
+ 0230  88 07			           mov [bx],al
+ 0232  8B C2			           mov ax,dx
+ 0234  C1 E8 04			           shr ax,4
+ 0237  43			           inc bx
+ 0238  E2 F2			           loop DF1
+				           
+ 023A  B9 0003			           mov cx,3
+ 023D  A1 0014 R		           mov ax,BCDTemper+2
+ 0240  8B F8			           mov di,ax
+ 0242  8B D0			DF2:       mov dx,ax
+ 0244  24 0F			           and al,0Fh
+ 0246  88 47 03			           mov [bx+3],al
+ 0249  8B C2			           mov ax,dx
+ 024B  C1 E8 04			           shr ax,4
+ 024E  43			           inc bx
+ 024F  E2 F1			           loop DF2
+				           
+ 0251  B9 0003			           mov cx,3
+ 0254  A1 0016 R		           mov ax,BCDTemper+4
+ 0257  8B F8			           mov di,ax
+ 0259  8B D0			DF3:       mov dx,ax
+ 025B  24 0F			           and al,0Fh
+ 025D  88 47 06			           mov [bx+6],al
+ 0260  8B C2			           mov ax,dx
+ 0262  C1 E8 04			           shr ax,4
+ 0265  43			           inc bx
+ 0266  E2 F1			           loop DF3
+				           
+ 0268  C3			           ret
+ 0269				DispFor endp
+
+
+ 0269				TemperOut proc  
+ 0269  33 D2			           xor dx,dx               
+ 026B  B2 FB			           mov dl, 0fbh
+ 026D  33 DB			           xor bx,bx  
+ 026F  33 C0			           xor ax,ax
+				           
+ 0271  8A 1C			TO1:      mov bl, [si]
+ 0273  2E: 8A 87 0000 R		           mov al,ConvTabl[bx]
+ 0278  80 FA FD			           cmp dl,0fdh
+ 027B  75 02			           jnz tod1
+ 027D  0C 80			           or al,80h
+ 027F  E6 00			tod1:      out OutPort, al
+ 0281  8A C2			           mov al,dl 
+ 0283  E6 01			           out OutPort1, al
+ 0285  B0 FF			           mov al, 0ffh
+ 0287  E6 01			           out OutPort1, al
+ 0289  46			           inc si
+ 028A  D0 CA			           ror dl,1
+ 028C  72 E3			           jc TO1
+				           
+				           
+				           
+ 028E  B2 DF			           mov dl, 0dfh
+ 0290  33 DB			           xor bx,bx
+ 0292  33 C0			           xor ax,ax  
+ 0294  B1 03			           mov cl,3
+ 0296  8A 5C 03			TO2:      mov bl, [si+3]
+ 0299  2E: 8A 87 0000 R		           mov al,ConvTabl[bx]
+ 029E  80 FA EF			           cmp dl,0efh
+ 02A1  75 02			           jnz tod2
+ 02A3  0C 80			           or al,80h
+ 02A5  E6 00			tod2:      out OutPort, al
+ 02A7  8A C2			           mov al,dl 
+ 02A9  E6 01			           out OutPort1, al
+ 02AB  B0 FF			           mov al, 0ffh
+ 02AD  E6 01			           out OutPort1, al
+ 02AF  46			           inc si
+ 02B0  D0 CA			           ror dl,1
+ 02B2  E2 E2			           loop TO2
+				           
+ 02B4  B2 FE			           mov dl, 0feh
+ 02B6  33 DB			           xor bx,bx
+ 02B8  33 C0			           xor ax,ax  
+ 02BA  8A 5C 06			           mov bl, [si+6]
+ 02BD  2E: 8A 87 0000 R		           mov al,ConvTabl[bx]
+ 02C2  E6 00			           out OutPort, al
+ 02C4  8A C2			           mov al,dl 
+ 02C6  E6 02			           out OutPort2, al
+ 02C8  B0 FF			           mov al, 0ffh
+ 02CA  E6 02			           out OutPort2, al
+				           
+ 02CC  B2 7F			           mov dl, 7fh
+ 02CE  33 DB			           xor bx,bx
+ 02D0  33 C0			           xor ax,ax  
+ 02D2  B1 02			           mov cl,2
+ 02D4  8A 5C 07			TO3:       mov bl, [si+7]
+ 02D7  2E: 8A 87 0000 R		           mov al,ConvTabl[bx]
+ 02DC  80 F9 02			           cmp cl,2
+ 02DF  75 02			           jnz tod3
+ 02E1  0C 80			           or al,80h
+ 02E3  E6 00			tod3:      out OutPort, al
+ 02E5  8A C2			           mov al,dl 
+ 02E7  E6 01			           out OutPort1, al
+ 02E9  B0 FF			           mov al, 0ffh
+ 02EB  E6 01			           out OutPort1, al
+ 02ED  46			           inc si
+ 02EE  D0 CA			           ror dl,1
+ 02F0  E2 E2			           loop TO3
+ 02F2  C3			           ret
+ 02F3				TemperOut endp		
+
+
+ 02F3				ConTemer proc
+ 02F3  8D 1E 0029 R		           lea   bx,DispTemper
+ 02F7  80 3E 000F R 01		           cmp bc,1
+ 02FC  75 0F			           jnz CT1
+ 02FE  80 3E 000C R FF		           cmp fredz1,0FFh
+ 0303  75 04			           jnz RZ1
+ 0305  8D 1E 0032 R		           lea   bx,ArrModeTemper
+ 0309  33 F6			RZ1:           xor si,si
+ 030B  EB 27			           jmp exit
+				           
+ 030D  80 3E 000F R 02		CT1:       cmp bc,2
+ 0312  75 10			           jnz CT2
+ 0314  80 3E 000D R FF		           cmp fredz2,0FFh
+ 0319  75 04			           jnz RZ2
+ 031B  8D 1E 0032 R		           lea   bx,ArrModeTemper
+ 031F  BE 0006			RZ2:           mov si,6
+ 0322  EB 10			           jmp exit
+ 0324  80 3E 000E R FF		CT2:       cmp fredz3,0FFh
+ 0329  75 04			           jnz RZ3
+ 032B  8D 1E 0032 R		           lea   bx,ArrModeTemper
+ 032F  BE 000C			RZ3:       mov si,0ch 
+ 0332  EB 00			           jmp exit        
+ 0334				exit:      
+
+ 0334  B2 F7			            mov dl, 0f7h
+ 0336  33 C0			           xor ax,ax  
+ 0338  B1 03			           mov cl,3
+ 033A  8A 00			CT3:       mov al,byte ptr [bx+si]
+ 033C  8B F8			           mov di,ax
+ 033E  33 C0			           xor ax,ax 
+ 0340  2E: 8A 85 0000 R		           mov al,ConvTabl[di]
+ 0345  80 FA FB			           cmp dl,0fbh
+ 0348  75 02			           jnz tod
+ 034A  0C 80			           or al,80h
+ 034C  E6 00			tod:      out OutPort, al
+ 034E  8A C2			           mov al,dl 
+ 0350  E6 02			           out OutPort2, al
+ 0352  B0 FF			           mov al, 0ffh
+ 0354  E6 02			           out OutPort2, al
+ 0356  43			           inc bx
+ 0357  D0 CA			           ror dl,1
+ 0359  E2 DF			           loop CT3      
+ 035B  C3			ret
+ 035C				ConTemer endp
+
+ 035C				ModeTemper proc
+ 035C  8D 36 0029 R		    lea si,DispTemper
+ 0360  8D 3E 0032 R		    lea di,ArrModeTemper
+ 0364  33 C0			    xor ax,ax
+ 0366  33 C9			    xor cx,cx    
+
+ 0368  80 3E 0009 R FF		    cmp RedactZ1,0FFh
+ 036D  75 0A			    jnz MT1
+ 036F  B1 03			    mov cl,3
+				    ;mov dl,0f7h
+ 0371  8A 04			    RZ1: mov al,[si]
+ 0373  88 05			    mov [di],al
+				           ;mov bl,[di]
+				           ;mov al,ConvTabl[bx]
+				           ;cmp dl,0fbh
+				           ;jnz tochka
+				           ;or al,80h
+				;tochka:      out OutPort, al
+				          ; mov al,dl 
+				          ; out OutPort2, al
+				          ; mov al, 0ffh
+				           ;out OutPort2, al
+				          ; ror dl,1   
+ 0375  46			    inc si
+ 0376  47			    inc di
+				       
+ 0377  E2 F8			    loop RZ1    
+				    
+
+ 0379  80 3E 000A R FF		MT1:    cmp RedactZ2,0FFh
+ 037E  75 0C			jnz MT2
+ 0380  B1 03			    mov cl,3
+ 0382  8A 44 06			RZ2:    mov al,[si+6h]
+ 0385  88 45 06			    mov [di+6],al
+ 0388  46			    inc si
+ 0389  47			    inc di
+ 038A  E2 F6			    loop RZ2  
+				    
+ 038C  80 3E 000B R FF		MT2:   cmp RedactZ3,0FFh
+ 0391  75 0C			    jnz MT3
+ 0393  B1 03			    mov cl,3
+ 0395  8A 44 0C			RZ3:    mov al,[si+0ch]
+ 0398  88 45 0C			    mov [di+0ch],al
+ 039B  46			    inc si
+ 039C  47			    inc di
+ 039D  E2 F6			    loop RZ3  
+				        
+ 039F				MT3:
+ 039F  C3			ret
+ 03A0				ModeTemper endp
+
+
+ 03A0				TemperRedact proc
+ 03A0  8D 36 0032 R		           lea si,ArrModeTemper
+ 03A4  80 3E 000F R 01		           cmp bc,1
+ 03A9  75 40			           jnz CT1
+ 03AB  80 3E 0007 R FF		           cmp Uvelich,0ffh
+ 03B0  75 19			           jnz U1
+ 03B2  8A 04			           mov al,byte ptr[si]
+ 03B4  14 02			           adc al,2h
+ 03B6  37			           aaa
+ 03B7  88 04			           mov byte ptr[si],al
+ 03B9  8A 44 01			           mov al,byte ptr[si+1]
+ 03BC  14 00			           adc al,0
+ 03BE  37			           aaa
+ 03BF  88 44 01			           mov byte ptr[si+1],al
+ 03C2  8A 44 02			           mov al,byte ptr[si+2]
+ 03C5  14 00			           adc al,0
+ 03C7  37			           aaa
+ 03C8  88 44 02			           mov byte ptr[si+2],al     
+				          
+ 03CB  80 3E 0008 R FF		U1:       cmp Umensh,0ffh
+ 03D0  75 19			           jnz CT1
+ 03D2  8A 04			           mov al,byte ptr[si]
+ 03D4  1C 02			           sbb al,2h
+ 03D6  3F			           aas
+ 03D7  88 04			           mov byte ptr[si],al
+ 03D9  8A 44 01			           mov al,byte ptr[si+1]
+ 03DC  1C 00			           sbb al,0
+ 03DE  3F			           aas
+ 03DF  88 44 01			           mov byte ptr[si+1],al
+ 03E2  8A 44 02			           mov al,byte ptr[si+2]
+ 03E5  1C 00			           sbb al,0
+ 03E7  3F			           aas
+ 03E8  88 44 02			           mov byte ptr[si+2],al   
+				          
+ 03EB  80 3E 000F R 02		CT1:       cmp bc,2
+ 03F0  75 44			           jnz CT2
+ 03F2  80 3E 0007 R FF		           cmp Uvelich,0ffh
+ 03F7  75 1B			           jnz U2
+ 03F9  8A 44 06			           mov al,byte ptr[si+6]
+ 03FC  14 02			           adc al,2h
+ 03FE  37			           aaa
+ 03FF  88 44 06			           mov byte ptr[si+6],al
+ 0402  8A 44 07			           mov al,byte ptr[si+7]
+ 0405  14 00			           adc al,0
+ 0407  37			           aaa
+ 0408  88 44 07			           mov byte ptr[si+7],al
+ 040B  8A 44 08			           mov al,byte ptr[si+8]
+ 040E  14 00			           adc al,0
+ 0410  37			           aaa
+ 0411  88 44 08			           mov byte ptr[si+8],al     
+				          
+ 0414  80 3E 0008 R FF		U2:       cmp Umensh,0ffh
+ 0419  75 1B			           jnz CT2
+ 041B  8A 44 06			           mov al,byte ptr[si+6]
+ 041E  1C 02			           sbb al,2h
+ 0420  3F			           aas
+ 0421  88 44 06			           mov byte ptr[si+6],al
+ 0424  8A 44 07			           mov al,byte ptr[si+7]
+ 0427  1C 00			           sbb al,0
+ 0429  3F			           aas
+ 042A  88 44 07			           mov byte ptr[si+7],al
+ 042D  8A 44 08			           mov al,byte ptr[si+8]
+ 0430  1C 00			           sbb al,0
+ 0432  3F			           aas
+ 0433  88 44 08			           mov byte ptr[si+8],al   
+ 0436  80 3E 000F R 04		CT2:       cmp bc,4  
+ 043B  75 44			           jnz exit           
+ 043D  80 3E 0007 R FF		          cmp Uvelich,0ffh
+ 0442  75 1B			           jnz met
+ 0444  8A 44 0C			           mov al,byte ptr[si+0ch]
+ 0447  14 02			           adc al,2h
+ 0449  37			           aaa
+ 044A  88 44 0C			           mov byte ptr[si+0ch],al
+ 044D  8A 44 0D			           mov al,byte ptr[si+0dh]
+ 0450  14 00			           adc al,0
+ 0452  37			           aaa
+ 0453  88 44 0D			           mov byte ptr[si+0dh],al
+ 0456  8A 44 0E			           mov al,byte ptr[si+0eh]
+ 0459  14 00			           adc al,0
+ 045B  37			           aaa
+ 045C  88 44 0E			           mov byte ptr[si+0eh],al     
+				          
+ 045F  80 3E 0008 R FF		met:       cmp Umensh,0ffh
+ 0464  75 1B			           jnz exit
+ 0466  8A 44 0C			           mov al,byte ptr[si+0ch]
+ 0469  1C 02			           sbb al,2h
+ 046B  3F			           aas
+ 046C  88 44 0C			           mov byte ptr[si+0ch],al
+ 046F  8A 44 0D			           mov al,byte ptr[si+0dh]
+ 0472  1C 00			           sbb al,0
+ 0474  3F			           aas
+ 0475  88 44 0D			           mov byte ptr[si+0dh],al
+ 0478  8A 44 0E			           mov al,byte ptr[si+0eh]
+ 047B  1C 00			           sbb al,0
+ 047D  3F			           aas
+ 047E  88 44 0E			           mov byte ptr[si+0eh],al                   
+ 0481  C3			exit:      ret
+ 0482				TemperRedact endp
+				 
+ 0482				setTemper proc
+ 0482  8D 36 0029 R		           lea si,DispTemper
+ 0486  8D 3E 0032 R		           lea di,ArrModeTemper 
+ 048A  80 3E 0002 R FF		           cmp setTempKey1,0ffh
+ 048F  B8 0FFB			           mov ax,0FFBh
+				           ;mov word ptr Time1,ax
+				           ;mov word ptr Time1+2,0h
+				           ;mov word ptr Time2,ax
+				           ;mov word ptr Time2+2,0h
+				           ;mov word ptr Time3,ax
+				           ;mov word ptr Time3+2,0h
+ 0492  8B D8			           mov bx,ax
+ 0494  BA 0000			           mov dx,0h
+ 0497  75 5D			           jnz ST1
+ 0499  8A 44 02			           mov al,[si+2]
+ 049C  3A 45 02			           cmp al,[di+2]
+ 049F  77 1A			           ja coolZ1
+ 04A1  72 4F			           jnae lampZ1
+ 04A3  8A 44 01			           mov al,[si+1]
+ 04A6  3A 45 01			           cmp al,[di+1]
+ 04A9  77 10			           ja coolZ1
+ 04AB  72 45			           jnae lampZ1
+ 04AD  8A 04			           mov al,[si]
+ 04AF  3A 05			           cmp al,[di] 
+ 04B1  77 08			           ja coolZ1
+ 04B3  72 3D			           jnae lampZ1
+ 04B5  33 C0			           xor ax,ax
+ 04B7  E6 04			           out SvPort2, al
+ 04B9  EB 3B			           jmp ST1
+ 04BB  A0 003B R		coolZ1:   mov al,coolMove1
+ 04BE  E6 04			           out SvPort2, al
+ 04C0  50			           push ax
+ 04C1				n1:        ;sub word ptr Time1,1
+				           ;sbb word ptr Time1+2,0
+				           ;mov ax,word ptr Time1
+				           ;or ax,word ptr Time1+2
+ 04C1  83 EB 01			           sub bx,1
+ 04C4  83 DA 00			           sbb dx,0
+ 04C7  8B C3			           mov ax,bx
+ 04C9  0B C2			           or ax,dx
+ 04CB  C6 06 0042 R 00		           mov EndTimeFlag1,0
+ 04D0  75 05			           jnz m1
+ 04D2  C6 06 0042 R FF		           mov EndTimeFlag1,0FFh
+ 04D7  B0 FF			m1:           mov al,0ffh
+ 04D9  38 06 0042 R		           cmp EndTimeFlag1,al
+ 04DD  75 E2			           jne n1
+ 04DF  33 C0			       xor ax,ax
+ 04E1  58			           pop ax
+ 04E2  D0 E0			           shl al,1
+ 04E4  A2 003B R		           mov coolMove1,al
+ 04E7  3C 80			           cmp al,80h
+ 04E9  75 0B			           jnz ST1
+ 04EB  B0 02			           mov al,2
+ 04ED  A2 003B R		           mov coolMove1,al
+ 04F0  EB 04			           jmp ST1
+ 04F2  B0 01			lampZ1:    mov al,1h
+ 04F4  E6 04			           out SvPort2, al       
+				           
+				           
+				           
+ 04F6  80 3E 0003 R FF		ST1:       cmp setTempKey2,0ffh
+ 04FB  75 65			           jnz ST2
+				           
+				           
+ 04FD  8A 44 08			           mov al,[si+8]
+ 0500  3A 45 08			           cmp al,[di+8]
+ 0503  77 1C			           ja coolZ2
+ 0505  72 57			           jnae lampZ2
+ 0507  8A 44 07			           mov al,[si+7]
+ 050A  3A 45 07			           cmp al,[di+7]
+ 050D  77 12			           ja coolZ2
+ 050F  72 4D			           jnae lampZ2
+ 0511  8A 44 06			           mov al,[si+6]
+ 0514  3A 45 06			           cmp al,[di+6] 
+ 0517  77 08			           ja coolZ2
+ 0519  72 43			           jnae lampZ2
+ 051B  33 C0			           xor ax,ax
+ 051D  E6 05			           out SvPort3, al
+ 051F  EB 41			           jmp ST2
+ 0521  A0 003C R		coolZ2:   mov al,coolMove2
+ 0524  E6 05			           out SvPort3, al
+ 0526  50			           push ax
+ 0527  BB 0FFB			           mov bx,0ffbh
+ 052A  BA 0000			           mov dx,0h
+ 052D				n2:        ;sub word ptr Time2,1
+				           ;sbb word ptr Time2+2,0
+				           ;mov ax,word ptr Time2
+				           ;or ax,word ptr Time2+2
+ 052D  83 EB 01			           sub bx,1
+ 0530  83 DA 00			           sbb dx,0
+ 0533  8B C3			           mov ax,bx
+ 0535  0B C2			           or ax,dx
+				        
+ 0537  C6 06 0047 R 00		           mov EndTimeFlag2,0
+ 053C  75 05			           jnz m2
+ 053E  C6 06 0047 R FF		           mov EndTimeFlag2,0FFh
+ 0543  B0 FF			m2:           mov al,0ffh
+ 0545  38 06 0047 R		           cmp EndTimeFlag2,al
+ 0549  75 E2			           jne n2
+ 054B  33 C0			       xor ax,ax
+ 054D  58			           pop ax
+ 054E  D0 E0			           shl al,1
+ 0550  A2 003C R		           mov coolMove2,al
+ 0553  3C 80			           cmp al,80h
+ 0555  75 0B			           jnz ST2
+ 0557  B0 02			           mov al,2
+ 0559  A2 003C R		           mov coolMove2,al
+ 055C  EB 04			           jmp ST2
+ 055E  B0 01			lampZ2:    mov al,1h
+ 0560  E6 05			           out SvPort3, al       
+				           
+				               
+				           
+				           
+ 0562  80 3E 0004 R FF		ST2:        cmp setTempKey3,0ffh
+ 0567  75 65			           jnz exit
+				           
+				           
+ 0569  8A 44 0E			           mov al,[si+0eh]
+ 056C  3A 45 0E			           cmp al,[di+0eh]
+ 056F  77 1C			           ja coolZ3
+ 0571  72 57			           jnae lampZ3
+ 0573  8A 44 0D			           mov al,[si+0dh]
+ 0576  3A 45 0D			           cmp al,[di+0dh]
+ 0579  77 12			           ja coolZ3
+ 057B  72 4D			           jnae lampZ3
+ 057D  8A 44 0C			           mov al,[si+0ch]
+ 0580  3A 45 0C			           cmp al,[di+0ch] 
+ 0583  77 08			           ja coolZ3
+ 0585  72 43			           jnae lampZ3
+ 0587  33 C0			           xor ax,ax
+ 0589  E6 03			           out SvPort1, al
+ 058B  EB 41			           jmp exit
+ 058D  A0 003D R		coolZ3:   mov al,coolMove3
+ 0590  E6 03			           out SvPort1, al
+ 0592  50			           push ax
+ 0593  BB 0FFB			           mov bx,0ffbh
+ 0596  BA 0000			           mov dx,0h
+ 0599				n3:        ;   sub word ptr Time3,1
+				          ; sbb word ptr Time3+2,0
+				           ;mov ax,word ptr Time3
+				           ;or ax,word ptr Time3+2
+ 0599  83 EB 01			           sub bx,1
+ 059C  83 DA 00			           sbb dx,0
+ 059F  8B C3			           mov ax,bx
+ 05A1  0B C2			           or ax,dx
+ 05A3  C6 06 004C R 00		           mov EndTimeFlag3,0
+ 05A8  75 05			           jnz m3
+ 05AA  C6 06 004C R FF		           mov EndTimeFlag3,0FFh
+ 05AF  B0 FF			m3:           mov al,0ffh
+ 05B1  38 06 004C R		           cmp EndTimeFlag3,al
+ 05B5  75 E2			           jne n3
+ 05B7  33 C0			       xor ax,ax
+ 05B9  58			           pop ax
+ 05BA  D0 E0			           shl al,1
+ 05BC  A2 003D R		           mov coolMove3,al
+ 05BF  3C 80			           cmp al,80h
+ 05C1  75 0B			           jnz exit
+ 05C3  B0 02			           mov al,2
+ 05C5  A2 003D R		           mov coolMove3,al
+ 05C8  EB 04			           jmp exit
+ 05CA  B0 01			lampZ3:    mov al,1h
+ 05CC  E6 03			           out SvPort1, al       
+				                     
+				           
+				           
+				           
+				           
+ 05CE				exit:       
+ 05CE  C3			ret
+ 05CF				setTemper endp
+
+
+
+				      
+ 05CF				Start:
+ 05CF  B8 ---- R		           mov   ax,Data
+ 05D2  8E D8			           mov   ds,ax
+ 05D4  8E C0			           mov   es,ax
+ 05D6  B8 ---- R		           mov   ax,Stk
+ 05D9  8E D0			           mov   ss,ax
+ 05DB  8D 26 003C R		           lea   sp,StkTop
+ 05DF  C6 06 0028 R 00		           mov Zone,0
+ 05E4  C6 06 0005 R 00		           mov KeyImageOld,0
+ 05E9  C6 06 000F R 01		           mov bc,1h
+ 05EE  C6 06 000C R 00		           mov fredz1,0h
+ 05F3  C6 06 000D R 00		           mov fredz2,0h
+ 05F8  C6 06 000E R 00		           mov fredz3,0h
+				         
+				        
+				           
+ 05FD				BEGIN:     
+				           
+ 05FD  E8 FA0A			           call KeyInput
+ 0600  E8 FA24			           call CommForm
+ 0603  E8 FB9B			           call ACPInput
+				           
+ 0606  8D 36 0022 R		           lea si,InTemper
+ 060A  8D 3E 0012 R		           lea di,BCDTemper
+ 060E  E8 FBEE			           call BCDCodeConv
+ 0611  8D 36 0024 R		           lea si,InTemper+2
+ 0615  8D 3E 0014 R		           lea di,BCDTemper+2
+ 0619  E8 FBE3			           call BCDCodeConv
+ 061C  8D 36 0026 R		           lea si,InTemper+4
+ 0620  8D 3E 0016 R		           lea di,BCDTemper+4
+ 0624  E8 FBD8			           call BCDCodeConv
+				           
+ 0627  E8 FBF6			           call DispFor
+ 062A  8D 36 0029 R		           lea si, DispTemper
+ 062E  E8 FC38			           call TemperOut 
+ 0631  E8 FD28			           call ModeTemper
+ 0634  E8 FCBC			           call ConTemer
+ 0637  E8 FD66			           call TemperRedact
+ 063A  E8 FE45			           call setTemper
+				           ;≥- TÅTÇ≥≥≥≥ ≥ø≥-≥ø≥øTÖ≥-TÇTå ≥-TÉ≥≥≥-Tã≥≥ ≥-≥øTÇ TÉ≥øTÄ≥-≥-≥øTèTéTâ≥≥≥≥≥- ≥ø≥-TÄTÇ≥- ≥+≥øTè ≥-TÜ≥ø
+				           ;????? ??????????? ??? ?????????
+ 063D  EB BE			           jmp BEGIN
+				;? ????????? ?????? ?????????? ??????? ???????? ????????? ?????
+				           org   RomSize-16
+				           ASSUME cs:NOTHING
+ 0FF0  EA ---- 05CF R		           jmp   Far Ptr Start
+ 0FF5				Code       ENDS
+				END
+Microsoft (R) Macro Assembler Version 6.14.8444		    08/07/18 22:59:02
+MPS.asm							     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+Code . . . . . . . . . . . . . .	16 Bit	 0FF5	  Para	  Private 
+Data . . . . . . . . . . . . . .	16 Bit	 004D	  Abs	  Private 
+Stk  . . . . . . . . . . . . . .	16 Bit	 003C	  Abs	  Private 
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+ACPInput . . . . . . . . . . . .	P Near	 01A1	  Code	Length= 005E Public
+  WaitRdy1 . . . . . . . . . . .	L Near	 01A9	  Code	
+  WaitRdy2 . . . . . . . . . . .	L Near	 01C8	  Code	
+  WaitRdy3 . . . . . . . . . . .	L Near	 01E7	  Code	
+BCDCodeConv  . . . . . . . . . .	P Near	 01FF	  Code	Length= 0021 Public
+  BCD2 . . . . . . . . . . . . .	L Near	 020A	  Code	
+  BCD1 . . . . . . . . . . . . .	L Near	 021D	  Code	
+CommForm . . . . . . . . . . . .	P Near	 0027	  Code	Length= 017A Public
+  BN0  . . . . . . . . . . . . .	L Near	 0056	  Code	
+  BT3  . . . . . . . . . . . . .	L Near	 0086	  Code	
+  BT4  . . . . . . . . . . . . .	L Near	 0097	  Code	
+  BN1  . . . . . . . . . . . . .	L Near	 00A8	  Code	
+  BN2  . . . . . . . . . . . . .	L Near	 00EA	  Code	
+  BN3  . . . . . . . . . . . . .	L Near	 011A	  Code	
+  BN4  . . . . . . . . . . . . .	L Near	 0130	  Code	
+  BN5  . . . . . . . . . . . . .	L Near	 0146	  Code	
+  BN6  . . . . . . . . . . . . .	L Near	 014B	  Code	
+  ZR1  . . . . . . . . . . . . .	L Near	 0162	  Code	
+  BN7  . . . . . . . . . . . . .	L Near	 0181	  Code	
+  exit . . . . . . . . . . . . .	L Near	 01A0	  Code	
+ConTemer . . . . . . . . . . . .	P Near	 02F3	  Code	Length= 0069 Public
+  RZ1  . . . . . . . . . . . . .	L Near	 0309	  Code	
+  CT1  . . . . . . . . . . . . .	L Near	 030D	  Code	
+  RZ2  . . . . . . . . . . . . .	L Near	 031F	  Code	
+  CT2  . . . . . . . . . . . . .	L Near	 0324	  Code	
+  RZ3  . . . . . . . . . . . . .	L Near	 032F	  Code	
+  exit . . . . . . . . . . . . .	L Near	 0334	  Code	
+  CT3  . . . . . . . . . . . . .	L Near	 033A	  Code	
+  tod  . . . . . . . . . . . . .	L Near	 034C	  Code	
+DispFor  . . . . . . . . . . . .	P Near	 0220	  Code	Length= 0049 Public
+  DF1  . . . . . . . . . . . . .	L Near	 022C	  Code	
+  DF2  . . . . . . . . . . . . .	L Near	 0242	  Code	
+  DF3  . . . . . . . . . . . . .	L Near	 0259	  Code	
+KeyInput . . . . . . . . . . . .	P Near	 000A	  Code	Length= 000B Public
+ModeTemper . . . . . . . . . . .	P Near	 035C	  Code	Length= 0044 Public
+  RZ1  . . . . . . . . . . . . .	L Near	 0371	  Code	
+  MT1  . . . . . . . . . . . . .	L Near	 0379	  Code	
+  RZ2  . . . . . . . . . . . . .	L Near	 0382	  Code	
+  MT2  . . . . . . . . . . . . .	L Near	 038C	  Code	
+  RZ3  . . . . . . . . . . . . .	L Near	 0395	  Code	
+  MT3  . . . . . . . . . . . . .	L Near	 039F	  Code	
+TemperOut  . . . . . . . . . . .	P Near	 0269	  Code	Length= 008A Public
+  TO1  . . . . . . . . . . . . .	L Near	 0271	  Code	
+  tod1 . . . . . . . . . . . . .	L Near	 027F	  Code	
+  TO2  . . . . . . . . . . . . .	L Near	 0296	  Code	
+  tod2 . . . . . . . . . . . . .	L Near	 02A5	  Code	
+  TO3  . . . . . . . . . . . . .	L Near	 02D4	  Code	
+  tod3 . . . . . . . . . . . . .	L Near	 02E3	  Code	
+TemperRedact . . . . . . . . . .	P Near	 03A0	  Code	Length= 00E2 Public
+  U1 . . . . . . . . . . . . . .	L Near	 03CB	  Code	
+  CT1  . . . . . . . . . . . . .	L Near	 03EB	  Code	
+  U2 . . . . . . . . . . . . . .	L Near	 0414	  Code	
+  CT2  . . . . . . . . . . . . .	L Near	 0436	  Code	
+  met  . . . . . . . . . . . . .	L Near	 045F	  Code	
+  exit . . . . . . . . . . . . .	L Near	 0481	  Code	
+VibrDelete . . . . . . . . . . .	P Near	 0015	  Code	Length= 0012 Public
+  VD1  . . . . . . . . . . . . .	L Near	 0015	  Code	
+  VD2  . . . . . . . . . . . . .	L Near	 0019	  Code	
+setTemper  . . . . . . . . . . .	P Near	 0482	  Code	Length= 014D Public
+  coolZ1 . . . . . . . . . . . .	L Near	 04BB	  Code	
+  n1 . . . . . . . . . . . . . .	L Near	 04C1	  Code	
+  m1 . . . . . . . . . . . . . .	L Near	 04D7	  Code	
+  lampZ1 . . . . . . . . . . . .	L Near	 04F2	  Code	
+  ST1  . . . . . . . . . . . . .	L Near	 04F6	  Code	
+  coolZ2 . . . . . . . . . . . .	L Near	 0521	  Code	
+  n2 . . . . . . . . . . . . . .	L Near	 052D	  Code	
+  m2 . . . . . . . . . . . . . .	L Near	 0543	  Code	
+  lampZ2 . . . . . . . . . . . .	L Near	 055E	  Code	
+  ST2  . . . . . . . . . . . . .	L Near	 0562	  Code	
+  coolZ3 . . . . . . . . . . . .	L Near	 058D	  Code	
+  n3 . . . . . . . . . . . . . .	L Near	 0599	  Code	
+  m3 . . . . . . . . . . . . . .	L Near	 05AF	  Code	
+  lampZ3 . . . . . . . . . . . .	L Near	 05CA	  Code	
+  exit . . . . . . . . . . . . .	L Near	 05CE	  Code	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+ACPPort1 . . . . . . . . . . . .	Number	 0000h	 
+ACPPort2 . . . . . . . . . . . .	Number	 0001h	 
+ACPPort3 . . . . . . . . . . . .	Number	 0002h	 
+ACPPort4 . . . . . . . . . . . .	Number	 0005h	 
+ACPPort5 . . . . . . . . . . . .	Number	 0006h	 
+ACPPort6 . . . . . . . . . . . .	Number	 0007h	 
+ACPStart . . . . . . . . . . . .	Number	 0007h	 
+ArrModeTemper  . . . . . . . . .	Byte	 0032	  Data	
+BCDTemper  . . . . . . . . . . .	Word	 0012	  Data	
+BEGIN  . . . . . . . . . . . . .	L Near	 05FD	  Code	
+ControlPortImage . . . . . . . .	Byte	 0018	  Data	
+ConvTabl . . . . . . . . . . . .	Byte	 0000	  Code	
+DispForm . . . . . . . . . . . .	Byte	 0019	  Data	
+DispTemper . . . . . . . . . . .	Byte	 0029	  Data	
+EndTimeFlag1 . . . . . . . . . .	Byte	 0042	  Data	
+EndTimeFlag2 . . . . . . . . . .	Byte	 0047	  Data	
+EndTimeFlag3 . . . . . . . . . .	Byte	 004C	  Data	
+InTemper . . . . . . . . . . . .	Word	 0022	  Data	
+KeyImageOld  . . . . . . . . . .	Byte	 0005	  Data	
+KeyImage . . . . . . . . . . . .	Byte	 0000	  Data	
+KeyPort  . . . . . . . . . . . .	Number	 0004h	 
+Nmax . . . . . . . . . . . . . .	Number	 0032h	 
+OutPort1 . . . . . . . . . . . .	Number	 0001h	 
+OutPort2 . . . . . . . . . . . .	Number	 0002h	 
+OutPort  . . . . . . . . . . . .	Number	 0000h	 
+RdyPort  . . . . . . . . . . . .	Number	 0003h	 
+RedactZ1 . . . . . . . . . . . .	Byte	 0009	  Data	
+RedactZ2 . . . . . . . . . . . .	Byte	 000A	  Data	
+RedactZ3 . . . . . . . . . . . .	Byte	 000B	  Data	
+RomSize  . . . . . . . . . . . .	Number	 1000h	 
+SelectZ  . . . . . . . . . . . .	Byte	 0006	  Data	
+SetTemp  . . . . . . . . . . . .	Byte	 0001	  Data	
+Start  . . . . . . . . . . . . .	L Near	 05CF	  Code	
+StkTop . . . . . . . . . . . . .	Word	 003C	  Stk	
+SvPort1  . . . . . . . . . . . .	Number	 0003h	 
+SvPort2  . . . . . . . . . . . .	Number	 0004h	 
+SvPort3  . . . . . . . . . . . .	Number	 0005h	 
+SvPort4  . . . . . . . . . . . .	Number	 0006h	 
+Time1  . . . . . . . . . . . . .	DWord	 003E	  Data	
+Time2  . . . . . . . . . . . . .	DWord	 0043	  Data	
+Time3  . . . . . . . . . . . . .	DWord	 0048	  Data	
+Umensh . . . . . . . . . . . . .	Byte	 0008	  Data	
+Uvelich  . . . . . . . . . . . .	Byte	 0007	  Data	
+Zone . . . . . . . . . . . . . .	Byte	 0028	  Data	
+bc . . . . . . . . . . . . . . .	Byte	 000F	  Data	
+coolMove1  . . . . . . . . . . .	Byte	 003B	  Data	
+coolMove2  . . . . . . . . . . .	Byte	 003C	  Data	
+coolMove3  . . . . . . . . . . .	Byte	 003D	  Data	
+fredz1 . . . . . . . . . . . . .	Byte	 000C	  Data	
+fredz2 . . . . . . . . . . . . .	Byte	 000D	  Data	
+fredz3 . . . . . . . . . . . . .	Byte	 000E	  Data	
+setTempKey1  . . . . . . . . . .	Byte	 0002	  Data	
+setTempKey2  . . . . . . . . . .	Byte	 0003	  Data	
+setTempKey3  . . . . . . . . . .	Byte	 0004	  Data	
+setind . . . . . . . . . . . . .	Byte	 0010	  Data	
+temp . . . . . . . . . . . . . .	Byte	 0011	  Data	
+
+	   0 Warnings
+	   0 Errors
